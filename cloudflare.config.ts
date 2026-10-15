@@ -14,6 +14,8 @@ export default defineConfig({
 		// 90日更新のない参加者を毎日削除する（src/index.ts の purgeStale）
 		triggers: [triggers.scheduled({ schedule: "17 18 * * *" })],
 		env: {
+			// 紹介動画を置くバケット（公開はせず、Worker 経由でだけ配信する）
+			ASSETS: bindings.r2({ name: "kuchiguse-assets" }),
 			DB: bindings.d1({
 				name: "kuchiguse-ranking",
 				id: "955ab533-82ac-47ff-9373-33e1a3e70405",

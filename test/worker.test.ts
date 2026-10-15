@@ -39,7 +39,16 @@ const fakeDb = () => {
       return st
     },
   }
-  return { env: { DB: db } as unknown as Env, rows }
+  const bytes = new Uint8Array(Array.from({ length: 100 }, (_, i) => i))
+  const ASSETS = {
+    async head() { return { size: bytes.length } },
+    async get(_key: string, o?: { range?: { offset: number; length?: number } }) {
+      const from = o?.range?.offset ?? 0
+      const slice = bytes.slice(from, from + (o?.range?.length ?? bytes.length))
+      return { size: bytes.length, body: new Response(slice).body as ReadableStream }
+    },
+  }
+  return { env: { DB: db, ASSETS } as unknown as Env, rows }
 }
 
 const post = (path: string, body: unknown, env: Env, now: number) =>
@@ -148,4 +157,32 @@ test('サンプル参加者は API と紹介ページで見分けられ、通常
 
   const res = await post('/v1/submit', { id: 'sampleabcdefghijklmn0123', secret: SECRET, name: 'x', stats }, env, 1000)
   assert.equal(res.status, 400)
+})
+
+test('紹介ページに動画があり、CSP が自分のメディアだけ許可する', async () => {
+  const { env } = fakeDb()
+  const res = await handle(new Request('https://x.test/'), env)
+  const html = await res.text()
+  assert.match(html, /<video controls/)
+  assert.match(html, /動画の内容/)
+  assert.match(res.headers.get('content-security-policy') ?? '', /media-src 'self'/)
+})
+
+test('動画は Range に応え、不正な範囲は 416', async () => {
+  const { env } = fakeDb()
+  const whole = await handle(new Request('https://x.test/intro.mp4'), env)
+  assert.equal(whole.status, 200)
+  assert.equal(whole.headers.get('content-type'), 'video/mp4')
+  assert.equal((await whole.arrayBuffer()).byteLength, 100)
+
+  const part = await handle(new Request('https://x.test/intro.mp4', { headers: { range: 'bytes=10-19' } }), env)
+  assert.equal(part.status, 206)
+  assert.equal(part.headers.get('content-range'), 'bytes 10-19/100')
+  assert.deepEqual([...new Uint8Array(await part.arrayBuffer())], [10, 11, 12, 13, 14, 15, 16, 17, 18, 19])
+
+  const tail = await handle(new Request('https://x.test/intro.mp4', { headers: { range: 'bytes=95-' } }), env)
+  assert.equal(tail.headers.get('content-range'), 'bytes 95-99/100')
+
+  const bad = await handle(new Request('https://x.test/intro.mp4', { headers: { range: 'bytes=500-600' } }), env)
+  assert.equal(bad.status, 416)
 })

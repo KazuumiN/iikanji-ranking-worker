@@ -3,7 +3,18 @@
 
 export interface Env {
   DB: D1Database
+  ASSETS: R2Bucket
 }
+
+// 最小限の R2 型（動画配信に使う分だけ）
+export interface R2Bucket {
+  get(
+    key: string,
+    options?: { range?: { offset: number; length?: number } },
+  ): Promise<(R2Body & { size: number; range?: { offset: number; length: number } }) | null>
+  head(key: string): Promise<{ size: number } | null>
+}
+export type R2Body = { body: ReadableStream }
 
 // 最小限の D1 型（テストで差し替えられるように自前で宣言する）
 export interface D1Database {
@@ -142,6 +153,13 @@ a:focus-visible, pre:focus-visible { outline: 3px solid var(--accent); outline-o
 <h1>口癖カウンター</h1>
 <p class="lead">「とりあえず」「いい感じに」など、プロンプトに混ざった口癖を数えて、楽しく振り返れる Claude Code の mod です。</p>
 
+<h2>1分でわかる紹介動画</h2>
+<video controls preload="metadata" playsinline width="1920" height="1080" style="width:100%;height:auto;border-radius:.5rem;background:#000" aria-describedby="video-text">
+<source src="/intro.mp4" type="video/mp4">
+このブラウザでは動画を再生できません。<a href="/intro.mp4">動画ファイルを開く</a>
+</video>
+<p id="video-text" class="lead">動画の内容: 口癖（「とりあえず」「いい感じに」など）を含むプロンプトを送ると、お祝いバナーと、口癖が出た箇所の引用、言い換えのヒントが出ます。ランキング・直近7日・実績のパネル、参加者だけの世界ランキング、バナーなどを個別にオフにできる設定を紹介します。音楽が流れます。画面は再現イメージです。</p>
+
 <h2>インストール</h2>
 <p>ターミナルの Claude Code で、次を入力します。</p>
 <pre tabindex="0"><code>${INSTALL_COMMAND}</code></pre>
@@ -181,8 +199,45 @@ ${
 </body>
 </html>`
 
+const VIDEO_KEY = 'intro.mp4'
+
+// Range 付きリクエストに応える（シークできるように）。範囲は 1 つだけ受け付ける
+const serveVideo = async (request: Request, env: Env) => {
+  const head = await env.ASSETS.head(VIDEO_KEY)
+  if (head === null) return json({ error: 'not_found' }, 404)
+  const base = {
+    'content-type': 'video/mp4',
+    'accept-ranges': 'bytes',
+    'cache-control': 'public, max-age=86400',
+    'x-content-type-options': 'nosniff',
+  }
+  const match = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get('range') ?? '')
+  if (match === null) {
+    if (request.method === 'HEAD') return new Response(null, { headers: { ...base, 'content-length': String(head.size) } })
+    const whole = await env.ASSETS.get(VIDEO_KEY)
+
+    return whole === null ? json({ error: 'not_found' }, 404) : new Response(whole.body, { headers: { ...base, 'content-length': String(head.size) } })
+  }
+  const start = match[1] === '' ? Math.max(0, head.size - Number(match[2])) : Number(match[1])
+  const end = match[1] === '' || match[2] === '' ? head.size - 1 : Math.min(Number(match[2]), head.size - 1)
+  if (!Number.isFinite(start) || start > end || start >= head.size) {
+    return new Response(null, { status: 416, headers: { ...base, 'content-range': `bytes */${head.size}` } })
+  }
+  const part = await env.ASSETS.get(VIDEO_KEY, { range: { offset: start, length: end - start + 1 } })
+  if (part === null) return json({ error: 'not_found' }, 404)
+
+  return new Response(request.method === 'HEAD' ? null : part.body, {
+    status: 206,
+    headers: { ...base, 'content-range': `bytes ${start}-${end}/${head.size}`, 'content-length': String(end - start + 1) },
+  })
+}
+
 export const handle = async (request: Request, env: Env, now = Date.now()): Promise<Response> => {
   const url = new URL(request.url)
+
+  if ((request.method === 'GET' || request.method === 'HEAD') && url.pathname === '/intro.mp4') {
+    return serveVideo(request, env)
+  }
 
   if (request.method === 'GET' && url.pathname === '/') {
     const { results } = await env.DB.prepare(
@@ -197,7 +252,7 @@ export const handle = async (request: Request, env: Env, now = Date.now()): Prom
         'content-type': 'text/html; charset=utf-8',
         'cache-control': 'public, max-age=60',
         'x-content-type-options': 'nosniff',
-        'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
+        'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; media-src 'self'; base-uri 'none'; form-action 'none'",
         'referrer-policy': 'no-referrer',
       },
     })
