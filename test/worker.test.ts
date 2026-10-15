@@ -24,7 +24,7 @@ const fakeDb = () => {
         },
         async all() {
           const list = [...rows.values()].sort((a, b) => b.total - a.total || a.updated_at - b.updated_at).slice(0, args[0] as number)
-          return { results: list }
+          return { results: list.map(p => ({ ...p, is_sample: p.id.startsWith('sample') ? 1 : 0 })) }
         },
         async run() {
           if (sql.startsWith('INSERT')) {
@@ -131,4 +131,21 @@ test('参加者がいなくても紹介ページは表示できる', async () =>
   const { env } = fakeDb()
   const html = await (await handle(new Request('https://x.test/'), env)).text()
   assert.match(html, /まだ参加者はいません/)
+})
+
+test('サンプル参加者は API と紹介ページで見分けられ、通常の参加では sample 始まりの ID を使えない', async () => {
+  const { env, rows } = fakeDb()
+  rows.set('sample0abcdef0123456789', { id: 'sample0abcdef0123456789', secret_hash: 'x', name: '見本たぬき', total: 20, distinct_count: 3, top_phrase: null, top_count: 0, updated_at: 1 })
+  await post('/v1/submit', { id: ID, secret: SECRET, name: '本物', stats }, env, 1000)
+
+  const list = (await (await handle(new Request('https://x.test/v1/ranking'), env)).json()) as { players: { name: string; isSample: boolean }[] }
+  assert.deepEqual(list.players.map(p => [p.name, p.isSample]), [['見本たぬき', true], ['本物', false]])
+
+  const html = await (await handle(new Request('https://x.test/'), env)).text()
+  assert.match(html, /見本たぬき <small class="lead">（サンプル）<\/small>/)
+  assert.match(html, /架空の参加者/)
+  assert.equal(html.includes('本物 <small'), false)
+
+  const res = await post('/v1/submit', { id: 'sampleabcdefghijklmn0123', secret: SECRET, name: 'x', stats }, env, 1000)
+  assert.equal(res.status, 400)
 })

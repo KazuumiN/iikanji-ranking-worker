@@ -110,7 +110,7 @@ const escapeHtml = (text: string) =>
 const INSTALL_COMMAND = '/plugin install kuchiguse-counter --marketplace KazuumiN/kuchiguse-counter'
 
 // 紹介ページ。名前は利用者が入力した文字列なので必ずエスケープして出す
-export const landingPage = (rows: { name: string; total: number }[], count: number) => `<!doctype html>
+export const landingPage = (rows: { name: string; total: number; isSample: boolean }[], count: number) => `<!doctype html>
 <html lang="ja">
 <head>
 <meta charset="utf-8">
@@ -174,8 +174,8 @@ ${
   rows.length === 0
     ? '<p class="lead">まだ参加者はいません。</p>'
     : `<table><caption class="lead" style="text-align:left">通算回数の上位</caption><thead><tr><th scope="col">順位</th><th scope="col">名前</th><th scope="col">回数</th></tr></thead><tbody>${rows
-        .map((r, i) => `<tr><td>${i + 1}</td><td>${escapeHtml(r.name)}</td><td>${r.total}</td></tr>`)
-        .join('')}</tbody></table>`
+        .map((r, i) => `<tr><td>${i + 1}</td><td>${escapeHtml(r.name)}${r.isSample ? ' <small class="lead">（サンプル）</small>' : ''}</td><td>${r.total}</td></tr>`)
+        .join('')}</tbody></table>${rows.some(r => r.isSample) ? '<p class="lead">「サンプル」と付いた名前は、見本として用意した架空の参加者です。実際の参加者が増えたら、順次なくします。</p>' : ''}`
 }
 </main>
 </body>
@@ -186,13 +186,13 @@ export const handle = async (request: Request, env: Env, now = Date.now()): Prom
 
   if (request.method === 'GET' && url.pathname === '/') {
     const { results } = await env.DB.prepare(
-      'SELECT name, total, distinct_count, top_phrase, top_count FROM players ORDER BY total DESC, updated_at ASC LIMIT ?',
+      "SELECT name, total, distinct_count, top_phrase, top_count, CASE WHEN id LIKE 'sample%' THEN 1 ELSE 0 END AS is_sample FROM players ORDER BY total DESC, updated_at ASC LIMIT ?",
     )
       .bind(10)
-      .all<{ name: string; total: number }>()
+      .all<{ name: string; total: number; is_sample: number }>()
     const c = await env.DB.prepare('SELECT COUNT(*) AS n FROM players').first<{ n: number }>()
 
-    return new Response(landingPage(results, c?.n ?? 0), {
+    return new Response(landingPage(results.map(r => ({ name: r.name, total: r.total, isSample: r.is_sample === 1 })), c?.n ?? 0), {
       headers: {
         'content-type': 'text/html; charset=utf-8',
         'cache-control': 'public, max-age=60',
@@ -206,10 +206,10 @@ export const handle = async (request: Request, env: Env, now = Date.now()): Prom
   if (request.method === 'GET' && url.pathname === '/v1/ranking') {
     const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit') ?? 20) || 20))
     const { results } = await env.DB.prepare(
-      'SELECT name, total, distinct_count, top_phrase, top_count FROM players ORDER BY total DESC, updated_at ASC LIMIT ?',
+      "SELECT name, total, distinct_count, top_phrase, top_count, CASE WHEN id LIKE 'sample%' THEN 1 ELSE 0 END AS is_sample FROM players ORDER BY total DESC, updated_at ASC LIMIT ?",
     )
       .bind(limit)
-      .all<{ name: string; total: number; distinct_count: number; top_phrase: string | null; top_count: number }>()
+      .all<{ name: string; total: number; distinct_count: number; top_phrase: string | null; top_count: number; is_sample: number }>()
     const c = await env.DB.prepare('SELECT COUNT(*) AS n FROM players').first<{ n: number }>()
 
     return json(
@@ -221,6 +221,7 @@ export const handle = async (request: Request, env: Env, now = Date.now()): Prom
         distinct: p.distinct_count,
         topPhrase: p.top_phrase,
         topCount: p.top_count,
+        isSample: p.is_sample === 1,
       })),
       count: c?.n ?? 0,
       },
@@ -237,6 +238,8 @@ export const handle = async (request: Request, env: Env, now = Date.now()): Prom
     if (name === null && typeof body.name === 'string' && body.name.trim() !== '') {
       return json({ error: 'name_rejected' }, 400)
     }
+    // `sample` で始まる ID は、見本の参加者用に予約している
+    if (typeof id === 'string' && id.startsWith('sample')) return json({ error: 'bad_request' }, 400)
     if (!isToken(id, 16, 64) || !isToken(secret, 16, 64) || name === null || typeof stats !== 'object' || stats === null) {
       return json({ error: 'bad_request' }, 400)
     }
