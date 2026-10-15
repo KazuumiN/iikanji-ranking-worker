@@ -111,3 +111,24 @@ test('応答にIDや秘密を含めず、CORSも付けない。90日更新のな
   await purgeStale(env, 1000 + RETENTION_MS + 1)
   assert.equal(rows.size, 0)
 })
+
+test('GET / は紹介ページを返し、名前はエスケープされる', async () => {
+  const { env } = fakeDb()
+  await post('/v1/submit', { id: ID, secret: SECRET, name: '"><img src=x onerror=1>', stats }, env, 1000)
+  const res = await handle(new Request('https://x.test/'), env, 2000)
+  assert.equal(res.status, 200)
+  assert.match(res.headers.get('content-type') ?? '', /text\/html/)
+  assert.match(res.headers.get('content-security-policy') ?? '', /default-src 'none'/)
+  const html = await res.text()
+  assert.match(html, /\/plugin install kuchiguse-counter/)
+  assert.match(html, /送らない/)
+  assert.equal(html.includes('<img src=x'), false)
+  assert.equal(html.includes('&lt;img'), false) // < > は入力時に取り除かれる
+  assert.equal(html.includes(ID) || html.includes(SECRET), false)
+})
+
+test('参加者がいなくても紹介ページは表示できる', async () => {
+  const { env } = fakeDb()
+  const html = await (await handle(new Request('https://x.test/'), env)).text()
+  assert.match(html, /まだ参加者はいません/)
+})
