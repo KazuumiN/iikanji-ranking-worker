@@ -25,6 +25,17 @@ npm run deploy                                # cf deploy
 
 公開先は `kuchiguse.kazuumi.page`（独自ドメインのみ。workers.dev は無効）です。
 
+## 自動デプロイ（Workers Builds）
+GitHub の `main` に push すると、Cloudflare 側で次の順に実行します。
+
+1. `npm ci && npm test`（テストが落ちたらデプロイしない）
+2. `npx cf deploy`
+
+設定は `cf builds` で行いました（リポジトリ連携 → `cf builds workers create`）。ビルドの確認は `cf builds list --external-script-id <Worker のタグ>`、ログは `cf builds logs` です。
+
+## 紹介ページ
+`GET /` はインストール方法・使い方・送る情報／送らない情報・現在の上位 10 人を表示します。名前はエスケープし、CSP で外部読み込みを禁止しています。
+
 ## 個人情報の扱い
 - IP アドレスや User-Agent は保存しません。Workers のログ・トレースも無効です。
 - 名前は公開されるため、メール・URL・電話番号のような文字列は拒否します。
