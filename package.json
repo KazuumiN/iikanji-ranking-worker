@@ -1,12 +1,12 @@
 {
-  "name": "kuchiguse-ranking-worker",
+  "name": "iikanji-ranking-worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "cf dev",
     "deploy": "cf deploy",
-    "db:init": "cf d1 migrations apply 955ab533-82ac-47ff-9373-33e1a3e70405",
+    "db:init": "cf d1 migrations apply 334ab305-6c9f-49ac-87ac-78877943d4bc",
     "test": "node --experimental-strip-types --test test/*.test.ts"
   },
   "devDependencies": {

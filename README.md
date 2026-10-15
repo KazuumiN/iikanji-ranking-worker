@@ -1,6 +1,6 @@
-# kuchiguse-ranking-worker
+# iikanji-ranking-worker
 
-kuchiguse-counter の世界ランキング API（Cloudflare Workers + D1）。
+iikanji-counter の世界ランキング API（Cloudflare Workers + D1）。
 
 ## 受け取るデータ
 名前（16文字まで）・通算回数・既定語の種類数・一番多い既定語とその回数だけです。プロンプトの文章や、利用者が追加した語は受け取りません（許可リストにない語は捨てます）。本人確認は、端末で作ったランダムな秘密のハッシュで行います。
@@ -18,12 +18,12 @@ kuchiguse-counter の世界ランキング API（Cloudflare Workers + D1）。
 ```
 npm install
 cf auth login
-cf d1 create --name kuchiguse-ranking        # 出力の uuid を cloudflare.config.ts に書く
+cf d1 create --name iikanji-ranking        # 出力の uuid を cloudflare.config.ts に書く
 npm run db:init                               # migrations/ を適用
 npm run deploy                                # cf deploy
 ```
 
-公開先は `kuchiguse.kazuumi.page`（独自ドメインのみ。workers.dev は無効）です。
+公開先は `iikanji.kazuumi.page`（独自ドメインのみ。workers.dev は無効）です。
 
 ## 自動デプロイ（Workers Builds）
 GitHub の `main` に push すると、Cloudflare 側で次の順に実行します。

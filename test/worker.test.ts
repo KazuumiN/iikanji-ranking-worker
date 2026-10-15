@@ -129,7 +129,7 @@ test('GET / は紹介ページを返し、名前はエスケープされる', as
   assert.match(res.headers.get('content-type') ?? '', /text\/html/)
   assert.match(res.headers.get('content-security-policy') ?? '', /default-src 'none'/)
   const html = await res.text()
-  assert.match(html, /\/plugin install kuchiguse-counter/)
+  assert.match(html, /\/plugin install iikanji-counter/)
   assert.match(html, /送らない/)
   assert.equal(html.includes('<img src=x'), false)
   assert.equal(html.includes('&lt;img'), false) // < > は入力時に取り除かれる

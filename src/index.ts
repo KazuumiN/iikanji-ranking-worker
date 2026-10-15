@@ -118,7 +118,7 @@ const rankOf = async (env: Env, total: number) => {
 const escapeHtml = (text: string) =>
   text.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c)
 
-const INSTALL_COMMAND = '/plugin install kuchiguse-counter --marketplace KazuumiN/kuchiguse-counter'
+const INSTALL_COMMAND = '/plugin install iikanji-counter --marketplace KazuumiN/iikanji-counter'
 
 // 紹介ページ。名前は利用者が入力した文字列なので必ずエスケープして出す
 export const landingPage = (rows: { name: string; total: number; isSample: boolean }[], count: number) => `<!doctype html>
@@ -127,7 +127,7 @@ export const landingPage = (rows: { name: string; total: number; isSample: boole
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>口癖カウンター</title>
+<title>いい感じカウンター</title>
 <style>
 :root { color-scheme: light dark; --bg: #fffdf7; --fg: #26231e; --sub: #5f594f; --accent: #b45309; --card: #f6efe1; --line: #d9ceb8; }
 @media (prefers-color-scheme: dark) { :root { --bg: #1c1a17; --fg: #f3eee3; --sub: #b9b2a3; --accent: #fbbf6a; --card: #2a2722; --line: #4a453c; } }
@@ -150,7 +150,7 @@ a:focus-visible, pre:focus-visible { outline: 3px solid var(--accent); outline-o
 </head>
 <body>
 <main>
-<h1>口癖カウンター</h1>
+<h1>いい感じカウンター</h1>
 <p class="lead">「とりあえず」「いい感じに」など、プロンプトに混ざった口癖を数えて、楽しく振り返れる Claude Code の mod です。</p>
 
 <h2>1分でわかる紹介動画</h2>
@@ -168,13 +168,13 @@ a:focus-visible, pre:focus-visible { outline: 3px solid var(--accent); outline-o
 <h2>使い方</h2>
 <ul>
 <li>入れるだけで、口癖を送るたびに数えます。お祝いバナーと、口癖が出た箇所の引用、言い換えのヒントが出ます。</li>
-<li><code>/kuchiguse</code> でランキング・パネルを開きます。</li>
-<li><code>/kuchiguse settings</code> で、バナーなどを個別にオフにできます。</li>
-<li><code>/kuchiguse add 語</code> と <code>/kuchiguse remove 語</code> で、数える語を変えられます。</li>
+<li><code>/iikanji</code> でランキング・パネルを開きます。</li>
+<li><code>/iikanji settings</code> で、バナーなどを個別にオフにできます。</li>
+<li><code>/iikanji add 語</code> と <code>/iikanji remove 語</code> で、数える語を変えられます。</li>
 </ul>
 
 <h2>世界ランキング（任意）</h2>
-<p><code>/kuchiguse join</code> で参加すると、ここに載ります。名前を省略すると、ランダムな名前になります。<code>/kuchiguse rename 名前</code> で変えられ、<code>/kuchiguse leave</code> で、データごと退会できます。</p>
+<p><code>/iikanji join</code> で参加すると、ここに載ります。名前を省略すると、ランダムな名前になります。<code>/iikanji rename 名前</code> で変えられ、<code>/iikanji leave</code> で、データごと退会できます。</p>
 
 <h3>送る情報と、送らない情報</h3>
 <table>
