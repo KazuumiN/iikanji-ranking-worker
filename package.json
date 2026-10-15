@@ -1,0 +1,16 @@
+{
+  "name": "kuchiguse-ranking-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "cf dev",
+    "deploy": "cf deploy",
+    "db:init": "cf d1 migrations apply 955ab533-82ac-47ff-9373-33e1a3e70405",
+    "test": "node --experimental-strip-types --test test/*.test.ts"
+  },
+  "devDependencies": {
+    "cf": "^1.0.0-beta.17",
+    "wrangler": "^4.151.0"
+  }
+}

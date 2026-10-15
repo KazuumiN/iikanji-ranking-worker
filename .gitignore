@@ -1,0 +1,8 @@
+node_modules
+.wrangler
+# cf が生成する。アカウント情報（cloudflare-account.json）を含むので入れない
+.cloudflare
+.dev.vars
+.env
+.env.*
+.DS_Store
